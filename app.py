@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 import chromadb
 import uuid
 import os
@@ -29,9 +29,23 @@ async def health_check():
     }
 
 
-@app.post("/query")
-def query(q: str):
+@app.post(
+    "/query",
+    tags=["Query"],
+    summary="Ask a question over the knowledge base",
+    description=(
+        "Performs semantic search over stored knowledge using vector similarity "
+        "and generates a context-aware answer using a large language model."
+    ),
+)
+def query(
+    q: str = Body(
+        ...,
+        example="What is Google Antigravity?",
+    )
+):
     try:
+        # Retrieve relevant context
         results = collection.query(query_texts=[q], n_results=1)
         context = results["documents"][0][0] if results["documents"] else ""
 
@@ -55,17 +69,33 @@ Answer clearly and concisely:
         )
 
         answer = completion.choices[0].message.content
+
         return {"answer": answer}
 
     except Exception:
+        # Graceful degradation — signals external dependency failure
         raise HTTPException(
-            status_code=503, detail="LLM service temporarily unavailable"
+            status_code=503,
+            detail="LLM service temporarily unavailable",
         )
 
 
-@app.post("/add")
-def add_knowledge(text: str):
-    """Add new content to the knowledge base dynamically."""
+@app.post(
+    "/add",
+    tags=["Knowledge"],
+    summary="Add knowledge to the vector database",
+    description=(
+        "Adds new text content to the knowledge base. "
+        "The text is embedded and stored in ChromaDB, making it "
+        "available for semantic search during querying."
+    ),
+)
+def add_knowledge(
+    text: str = Body(
+        ...,
+        example="Google Antigravity is an AI-powered IDE developed by Google.",
+    )
+):
     try:
         doc_id = str(uuid.uuid4())
         collection.add(documents=[text], ids=[doc_id])
@@ -75,5 +105,9 @@ def add_knowledge(text: str):
             "message": "Content added to knowledge base",
             "id": doc_id,
         }
+
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add knowledge: {str(e)}",
+        )
