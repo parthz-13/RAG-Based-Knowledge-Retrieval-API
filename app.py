@@ -8,7 +8,8 @@ chroma = chromadb.PersistentClient(path="./db")
 collection = chroma.get_or_create_collection("docs")
 
 
-@app.get("/health", tags=["Health"])
+@app.get("/health")
+@app.head("/health")
 async def health_check():
     return {"status": "ok", "service": "rag-api", "vector_store": "chromadb"}
 
