@@ -1,1 +1,1 @@
-Google Antigravity is an AI-powered integrated development environment developed by Google, designed for prioritizing AI agents platform for software development.
+Kubernetes (K8s) is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications, making it easier to run complex, cloud-native applications consistently across different environments
