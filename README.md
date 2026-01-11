@@ -22,3 +22,34 @@ This project is designed as a **backend-first, API-driven RAG system**, suitable
 2. User queries are semantically matched against stored knowledge
 3. Retrieved context is passed to an LLM (via Groq)
 4. The LLM generates a context-aware answer
+
+---
+
+
+## Live Demo
+
+The API is deployed and accessible via **interactive Swagger UI**:
+
+**Live Demo:** [`LINK`](https://rag-based-knowledge-retrieval-api.onrender.com/docs)
+
+You can:
+- Add new knowledge
+- Ask questions
+- See answers immediately
+
+No setup required.
+
+---
+
+## API Endpoints
+
+### `GET /health`
+Health check endpoint used for uptime monitoring.
+
+**Response**
+```json
+{
+  "status": "ok",
+  "service": "rag-api",
+  "vector_store": "chromadb"
+}
