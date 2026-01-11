@@ -30,6 +30,39 @@ async def health_check():
 
 
 @app.post(
+    "/add",
+    tags=["Knowledge"],
+    summary="Add knowledge to the vector database",
+    description=(
+        "Adds new text content to the knowledge base. "
+        "The text is embedded and stored in ChromaDB, making it "
+        "available for semantic search during querying."
+    ),
+)
+def add_knowledge(
+    text: str = Body(
+        ...,
+        example="Google Antigravity is an AI-powered IDE developed by Google.",
+    ),
+):
+    try:
+        doc_id = str(uuid.uuid4())
+        collection.add(documents=[text], ids=[doc_id])
+
+        return {
+            "status": "success",
+            "message": "Content added to knowledge base",
+            "id": doc_id,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add knowledge: {str(e)}",
+        )
+
+
+@app.post(
     "/query",
     tags=["Query"],
     summary="Ask a question over the knowledge base",
@@ -42,10 +75,9 @@ def query(
     q: str = Body(
         ...,
         example="What is Google Antigravity?",
-    )
+    ),
 ):
     try:
-        # Retrieve relevant context
         results = collection.query(query_texts=[q], n_results=1)
         context = results["documents"][0][0] if results["documents"] else ""
 
@@ -73,41 +105,7 @@ Answer clearly and concisely:
         return {"answer": answer}
 
     except Exception:
-        # Graceful degradation — signals external dependency failure
         raise HTTPException(
             status_code=503,
             detail="LLM service temporarily unavailable",
-        )
-
-
-@app.post(
-    "/add",
-    tags=["Knowledge"],
-    summary="Add knowledge to the vector database",
-    description=(
-        "Adds new text content to the knowledge base. "
-        "The text is embedded and stored in ChromaDB, making it "
-        "available for semantic search during querying."
-    ),
-)
-def add_knowledge(
-    text: str = Body(
-        ...,
-        example="Google Antigravity is an AI-powered IDE developed by Google.",
-    )
-):
-    try:
-        doc_id = str(uuid.uuid4())
-        collection.add(documents=[text], ids=[doc_id])
-
-        return {
-            "status": "success",
-            "message": "Content added to knowledge base",
-            "id": doc_id,
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to add knowledge: {str(e)}",
         )
