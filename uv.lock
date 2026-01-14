@@ -1225,6 +1225,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "groq" },
     { name = "ollama" },
+    { name = "python-dotenv" },
     { name = "ruff" },
     { name = "uvicorn" },
 ]
@@ -1235,6 +1236,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "groq", specifier = ">=1.0.0" },
     { name = "ollama", specifier = ">=0.6.1" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "ruff", specifier = ">=0.14.11" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]

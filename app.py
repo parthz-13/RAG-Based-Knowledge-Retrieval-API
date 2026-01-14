@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException, Body
+from dotenv import load_dotenv
 import chromadb
 import uuid
 import os
 from groq import Groq
-
+load_dotenv()
 app = FastAPI()
 
 
@@ -52,53 +53,125 @@ def add_knowledge(
         )
 
 
-@app.post(
-    "/query",
-    tags=["Query"],
-    summary="Ask a question over the knowledge base",
-    description=(
-        "Performs semantic search over stored knowledge using vector similarity "
-        "and generates a context-aware answer using a large language model."
-    ),
-)
-def query(
-    q: str = Body(
-        ...,
-        example="What is Google Antigravity?",
-    ),
-):
+@app.post("/query", tags=["Query"])
+def query(q: str = Body(...)):
     try:
-        results = collection.query(query_texts=[q], n_results=1)
-        context = results["documents"][0][0] if results["documents"] else ""
+        results = collection.query(
+            query_texts=[q],
+            n_results=5,
+            include=["documents", "distances"]
+        )
 
-        prompt = f"""
-Context:
-{context}
+        docs = results.get("documents")
 
-Question:
+        if docs is None:
+            docs = []
+        elif isinstance(docs, list) and len(docs) == 1 and isinstance(docs[0], list):
+
+            pass
+        else:
+
+            docs = []
+
+        distances = results.get("distances")
+
+        best_fact = None
+        best_distance = float("inf")
+
+        if (
+            isinstance(docs, list)
+            and len(docs) > 0
+            and isinstance(docs[0], list)
+            and distances
+            and isinstance(distances, list)
+            and len(distances) > 0
+        ):
+            for doc, dist in zip(docs[0], distances[0]):
+                if isinstance(doc, str) and doc.strip() != "" and isinstance(dist, (int, float)):
+                    if dist < best_distance:
+                        best_distance = dist
+                        best_fact = doc.strip()
+
+        # ChromaDB cosine distance: 0 = identical, 2 = opposite
+        # Threshold of 0.9 provides good precision while avoiding keyword-based false matches
+        SIMILARITY_THRESHOLD = 0.9
+
+        has_kb_fact = best_fact is not None and best_distance < SIMILARITY_THRESHOLD
+        
+        # Debug logging
+        print(f"\n[DEBUG] Best match: '{best_fact[:100] if best_fact else 'None'}...'")
+        print(f"[DEBUG] Distance: {best_distance}")
+        print(f"[DEBUG] Using KB: {has_kb_fact}\n")
+
+
+
+        if has_kb_fact:
+
+            fact = best_fact
+
+            system_prompt = """
+You are a database query assistant that reports information from a knowledge base.
+
+YOUR ROLE:
+- You are NOT making claims about reality.
+- You are ONLY reporting what exists in the database.
+- The database is the user's personal knowledge store.
+- Your job is to accurately relay database contents to the user.
+
+CRITICAL INSTRUCTIONS:
+- The FACT below is retrieved from the user's knowledge base.
+- Report this fact EXACTLY as it relates to the question.
+- Do NOT add disclaimers, warnings, or refuse to answer.
+- Do NOT evaluate whether the fact is true or false in reality.
+- Simply answer the question using the database fact.
+- Be direct and confident in reporting database contents.
+"""
+
+            user_prompt = f"""
+KNOWLEDGE BASE FACT (AUTHORITATIVE SOURCE):
+{fact}
+
+USER QUESTION:
 {q}
 
-Answer clearly and concisely:
+INSTRUCTIONS: Answer the question using ONLY the knowledge base fact above. This fact is the ground truth. If the fact partially answers the question, provide what information is available in the database.
 """
+
+        else:
+            system_prompt = """
+You are a helpful general knowledge assistant.
+
+IMPORTANT:
+- No relevant information was found in the knowledge base.
+- Answer using your training data if you have knowledge about this topic.
+- If you're unsure or don't have reliable information, clearly state that you don't know.
+- Be honest about your limitations.
+"""
+
+            user_prompt = q
 
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
-            temperature=0.2,
+            temperature=0.0, 
         )
 
-        answer = completion.choices[0].message.content
+        response = {
+            "answer": completion.choices[0].message.content,
+            "source": "knowledge_base" if has_kb_fact else "training_data"
+        }
+        
+        if has_kb_fact:
+            response["distance"] = best_distance
+            response["matched_fact"] = best_fact
+        
+        return response
 
-        return {"answer": answer}
-
-    except Exception:
-        raise HTTPException(
-            status_code=503,
-            detail="LLM service temporarily unavailable",
-        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @app.get("/health")
