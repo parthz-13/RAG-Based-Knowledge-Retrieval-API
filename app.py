@@ -19,16 +19,6 @@ if not GROQ_API_KEY:
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 
-@app.get("/health")
-@app.head("/health")
-async def health_check():
-    return {
-        "status": "ok",
-        "service": "rag-api",
-        "vector_store": "chromadb",
-    }
-
-
 @app.post(
     "/add",
     tags=["Knowledge"],
@@ -109,3 +99,13 @@ Answer clearly and concisely:
             status_code=503,
             detail="LLM service temporarily unavailable",
         )
+
+
+@app.get("/health")
+@app.head("/health")
+async def health_check():
+    return {
+        "status": "ok",
+        "service": "rag-api",
+        "vector_store": "chromadb",
+    }
