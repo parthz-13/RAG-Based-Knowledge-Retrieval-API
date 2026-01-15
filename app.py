@@ -4,6 +4,7 @@ import chromadb
 import uuid
 import os
 from groq import Groq
+
 load_dotenv()
 app = FastAPI()
 
@@ -57,9 +58,7 @@ def add_knowledge(
 def query(q: str = Body(...)):
     try:
         results = collection.query(
-            query_texts=[q],
-            n_results=5,
-            include=["documents", "distances"]
+            query_texts=[q], n_results=5, include=["documents", "distances"]
         )
 
         docs = results.get("documents")
@@ -67,10 +66,8 @@ def query(q: str = Body(...)):
         if docs is None:
             docs = []
         elif isinstance(docs, list) and len(docs) == 1 and isinstance(docs[0], list):
-
             pass
         else:
-
             docs = []
 
         distances = results.get("distances")
@@ -87,26 +84,25 @@ def query(q: str = Body(...)):
             and len(distances) > 0
         ):
             for doc, dist in zip(docs[0], distances[0]):
-                if isinstance(doc, str) and doc.strip() != "" and isinstance(dist, (int, float)):
+                if (
+                    isinstance(doc, str)
+                    and doc.strip() != ""
+                    and isinstance(dist, (int, float))
+                ):
                     if dist < best_distance:
                         best_distance = dist
                         best_fact = doc.strip()
 
-        # ChromaDB cosine distance: 0 = identical, 2 = opposite
-        # Threshold of 0.9 provides good precision while avoiding keyword-based false matches
         SIMILARITY_THRESHOLD = 0.9
 
         has_kb_fact = best_fact is not None and best_distance < SIMILARITY_THRESHOLD
-        
+
         # Debug logging
         print(f"\n[DEBUG] Best match: '{best_fact[:100] if best_fact else 'None'}...'")
         print(f"[DEBUG] Distance: {best_distance}")
         print(f"[DEBUG] Using KB: {has_kb_fact}\n")
 
-
-
         if has_kb_fact:
-
             fact = best_fact
 
             system_prompt = """
@@ -156,18 +152,18 @@ IMPORTANT:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.0, 
+            temperature=0.0,
         )
 
         response = {
             "answer": completion.choices[0].message.content,
-            "source": "knowledge_base" if has_kb_fact else "training_data"
+            "source": "knowledge_base" if has_kb_fact else "training_data",
         }
-        
+
         if has_kb_fact:
             response["distance"] = best_distance
             response["matched_fact"] = best_fact
-        
+
         return response
 
     except Exception as e:
