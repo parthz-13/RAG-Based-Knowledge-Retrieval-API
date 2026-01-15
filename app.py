@@ -53,7 +53,7 @@ def add_knowledge(
         )
 
 
-@app.post("/query", tags=["Query"])
+@app.post("/query", tags=["Query"], summary="Ask queries")
 def query(q: str = Body(...)):
     try:
         results = collection.query(
