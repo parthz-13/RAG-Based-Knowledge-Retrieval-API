@@ -6,8 +6,17 @@ import os
 from groq import Groq
 
 load_dotenv()
-app = FastAPI()
-
+app = FastAPI(
+    title="RAG-Based Knowledge Retrieval API",
+    description=(
+        "⚠️ **Hosted on free-tier infrastructure.**\n\n"
+        "The first request may take **20–30 seconds** due to cold start. "
+        "Subsequent requests will be fast.\n\n"
+        "This API demonstrates a Retrieval-Augmented Generation (RAG) system "
+        "using FastAPI, ChromaDB, and Groq LLMs."
+    ),
+    version="1.0.0",
+)
 
 chroma = chromadb.PersistentClient(path="./db")
 collection = chroma.get_or_create_collection("docs")
