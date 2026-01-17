@@ -43,7 +43,7 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 def add_knowledge(
     text: str = Body(
         ...,
-        example="Google Antigravity is an AI-powered IDE developed by Google.",
+        example="Add your desired knowledge inside these double quotes",
     ),
 ):
     try:
@@ -64,7 +64,8 @@ def add_knowledge(
 
 
 @app.post("/query", tags=["Query"], summary="Ask queries")
-def query(q: str = Body(...)):
+def query(q: str = Body(...,
+                        example="Ask queries inside these double quotes")):
     try:
         results = collection.query(
             query_texts=[q], n_results=5, include=["documents", "distances"]
